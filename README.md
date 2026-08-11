@@ -1,58 +1,142 @@
-# Desarrollo Móvil con Flutter — Clases 2 y 3
+# ToolSuite — Ejercicios de Desarrollo Móvil con Flutter
 
-Material de clase y ejercicios resueltos del curso de desarrollo móvil.
+Proyecto del curso de desarrollo móvil: una aplicación integradora que reúne varios
+ejercicios de UI en un solo menú navegable, más dos apps independientes y las guías
+interactivas de clase.
 
-## Contenido
+El objetivo pedagógico es pasar de *"todo el código en `main.dart`"* a una
+**arquitectura multi-archivo** con modelos POO, pantallas separadas y navegación
+con `Navigator`.
 
-| Carpeta / archivo | Qué es |
+![Menú Hub de la ToolSuite](docs/capturas/toolsuite-hub.png)
+
+---
+
+## Qué contiene
+
+| Carpeta / archivo | Descripción |
 |---|---|
-| `flutter_application_1/` | **ToolSuite** — app integradora de la Clase 3: menú hub con `ListView.builder`, `Drawer` y navegación con `Navigator.push()` hacia cada ejercicio en su propio archivo `.dart` |
-| `calculadora_app/` | Proyecto independiente — Calculadora Pro de la Clase 2 con las 4 operaciones (+, −, ×, ÷) |
-| `encuesta_app/` | Proyecto independiente — Encuesta de Satisfacción de la Clase 2 |
-| `clase_2_*.html` | Guía interactiva de la Clase 2: anatomía de widgets, laboratorios visuales, taller y 4 retos con simuladores |
-| `clase_3_*.html` | Guía interactiva de la Clase 3: navegación, POO, arquitectura multi-archivo y reto integrador |
+| **`flutter_application_1/`** | **ToolSuite** — app integradora: menú hub con `ListView.builder`, `Drawer` y `Navigator.push()` hacia cada ejercicio |
+| **`calculadora_app/`** | Proyecto independiente — Calculadora con las 4 operaciones (+, −, ×, ÷) |
+| **`encuesta_app/`** | Proyecto independiente — Encuesta de satisfacción |
+| `clase_2_*.html` | Guía interactiva: anatomía de widgets, Flex Engine, laboratorios visuales y 4 retos con simulador |
+| `clase_3_*.html` | Guía interactiva: navegación, POO, arquitectura `lib/` y reto integrador |
+
+Las guías HTML se abren directamente en el navegador, sin servidor ni dependencias.
+
+---
 
 ## La ToolSuite
 
-`flutter_application_1` reúne los ejercicios como pantallas separadas:
+El menú no usa `if/else` ni `switch` para decidir a dónde navegar. Cada ítem es un
+objeto `Herramienta` que **guarda dentro su pantalla destino**, y el
+`ListView.builder` la instancia sola:
+
+```dart
+Herramienta(
+  id: '1',
+  titulo: 'Cotizador de Envíos',
+  descripcion: 'Calcula fletes según peso y destino',
+  icono: Icons.local_shipping,
+  color: Colors.indigo,
+  pantallaDestino: const CotizadorScreen(),  // ← una pantalla es un objeto
+),
+```
+
+```dart
+onTap: () => Navigator.push(
+  context,
+  MaterialPageRoute(builder: (context) => item.pantallaDestino),
+),
+```
+
+Si mañana agregas 20 herramientas más, el código del menú **no cambia**: solo crece
+la lista. Eso es lo que hace valioso el modelo de datos.
+
+### Estructura
 
 ```
-lib/
+flutter_application_1/lib/
 ├── main.dart                     → MaterialApp + MenuScreen
 ├── models/
 │   ├── herramienta.dart          → modelo POO de cada tarjeta del menú
-│   └── medico.dart               → modelo del reto integrador (Clase 3)
+│   └── medico.dart               → modelo del reto integrador
 └── screens/
     ├── menu_screen.dart          → hub con Drawer y ListView.builder
-    ├── cotizador_screen.dart     → Reto 1: Dropdown, RadioListTile, SwitchListTile
-    ├── encuesta_screen.dart      → Reto 2: Slider, CheckboxListTile, ChoiceChip
-    ├── propina_screen.dart       → Reto 3: SegmentedButton, IconButton
-    └── citas_screen.dart         → Reto 4: showDatePicker(), ChoiceChip
+    ├── cotizador_screen.dart     → Dropdown · RadioListTile · SwitchListTile
+    ├── encuesta_screen.dart      → Slider · CheckboxListTile · ChoiceChip
+    ├── propina_screen.dart       → SegmentedButton · IconButton
+    └── citas_screen.dart         → showDatePicker() · ChoiceChip
 ```
+
+### Los ejercicios
+
+| Pantalla | Qué resuelve | Widgets que practica |
+|---|---|---|
+| **Cotizador de Envíos** | Calcula el flete según peso, ciudad, velocidad del servicio y seguro opcional | `TextField`, `DropdownButtonFormField`, `RadioListTile`, `SwitchListTile` |
+| **Encuesta de Feedback** | Califica un servicio y arma un resumen en tiempo real | `Slider`, `CheckboxListTile`, `ChoiceChip`, `SnackBar` |
+| **Propinas y División** | Divide la cuenta de un restaurante entre varias personas | `SegmentedButton`, `IconButton` |
+| **Agendar Cita Médica** | Reserva un turno y genera un ticket de confirmación | `showDatePicker()` asíncrono, `ChoiceChip` |
+
+<p align="center">
+  <img src="docs/capturas/cotizador.png" width="45%" alt="Cotizador de envíos">
+  <img src="docs/capturas/encuesta.png" width="45%" alt="Encuesta de feedback">
+</p>
+
+---
+
+## Apps independientes
+
+Los dos ejercicios centrales de la Clase 2 también viven como proyectos Flutter
+completos, para poder ejecutarlos por separado:
+
+- **`calculadora_app/`** — suma, resta, multiplicación y división. Valida campos
+  vacíos, atrapa la división entre cero y recorta los decimales infinitos
+  (`10 ÷ 3` → `3.3333`, no `3.3333333333333335`).
+- **`encuesta_app/`** — la encuesta con su `Slider`, casillas y chips.
+
+<p align="center">
+  <img src="docs/capturas/calculadora.png" width="45%" alt="Calculadora con las 4 operaciones">
+</p>
+
+---
 
 ## Cómo ejecutar
 
-Requiere Flutter 3.44 o superior.
+Requiere **Flutter 3.44** o superior.
 
 ```bash
-cd flutter_application_1      # o calculadora_app / encuesta_app
+git clone https://github.com/nicolneira07-tech/flutter-toolsuite.git
+cd flutter-toolsuite/flutter_application_1   # o calculadora_app / encuesta_app
+
 flutter pub get
 flutter run
 ```
 
-Para ver las guías HTML basta abrirlas en el navegador (no necesitan servidor).
-
 ## Pruebas
 
-Cada proyecto trae pruebas de widget:
+Los tres proyectos tienen pruebas de widget y pasan `flutter analyze` sin avisos:
 
 ```bash
-flutter test
 flutter analyze
+flutter test
 ```
 
-| Proyecto | Pruebas |
-|---|---|
-| `flutter_application_1` | 3 — el hub lista las herramientas, cada una abre y regresa con `pop`, el drawer se abre |
-| `calculadora_app` | 7 — las 4 operaciones, división entre cero, campos vacíos y limpiar |
-| `encuesta_app` | 3 — estado inicial, cambio de canal y `SnackBar` al enviar |
+| Proyecto | Pruebas | Qué verifican |
+|---|---|---|
+| `flutter_application_1` | 3 | El hub lista sus herramientas, cada una abre y regresa con `pop`, el drawer se abre |
+| `calculadora_app` | 7 | Las 4 operaciones, división entre cero, campos vacíos y limpiar |
+| `encuesta_app` | 3 | Estado inicial, cambio de canal y `SnackBar` al enviar |
+
+---
+
+## Notas técnicas
+
+Escrito contra **Flutter 3.44 / Dart 3.12**, usando el API vigente:
+
+- `RadioListTile` va dentro de un widget `RadioGroup` ancestro
+  (`groupValue` y `onChanged` en el tile quedaron obsoletos).
+- `DropdownButtonFormField` usa `initialValue` en lugar de `value`.
+
+El material HTML de clase muestra la forma clásica, que sigue compilando pero
+genera avisos de deprecación en versiones recientes.
