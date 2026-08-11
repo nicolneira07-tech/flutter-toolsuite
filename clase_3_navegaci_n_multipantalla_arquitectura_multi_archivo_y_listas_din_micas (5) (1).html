@@ -1,0 +1,2674 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clase 3: Navegación Multipantalla, Arquitectura Multi-Archivo y Listas Dinámicas en Flutter</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        flutter: {
+                            light: '#54C5F8',
+                            DEFAULT: '#02569B',
+                            dark: '#0175C2',
+                            accent: '#01B5D8',
+                            darkbg: '#080D16',
+                            card: '#111B2E',
+                            border: '#1E2D4A'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #080d16;
+            color: #e6edf3;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #111b2e;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e2d4a;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #54c5f8;
+        }
+        .glass-panel {
+            background: rgba(17, 27, 46, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(30, 45, 74, 0.7);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #54C5F8 0%, #29B6F6 50%, #01579B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        @keyframes phoneGlow {
+            0%, 100% { box-shadow: 0 0 25px rgba(84, 197, 248, 0.15); }
+            50% { box-shadow: 0 0 35px rgba(84, 197, 248, 0.35); }
+        }
+        .phone-mockup {
+            animation: phoneGlow 4s infinite ease-in-out;
+        }
+        
+        /* X-Ray / Inspect Mode Overlay Styles */
+        .xray-active .xray-navigator { outline: 2px dashed #0ea5e9 !important; position: relative; }
+        .xray-active .xray-listview { outline: 2px dashed #10b981 !important; position: relative; }
+        .xray-active .xray-file-boundary { outline: 2px dashed #f59e0b !important; position: relative; }
+
+        .xray-badge {
+            display: none;
+        }
+        .xray-active .xray-badge {
+            display: inline-block;
+            position: absolute;
+            top: -10px;
+            left: 6px;
+            font-size: 9px;
+            font-family: monospace;
+            padding: 1px 5px;
+            border-radius: 4px;
+            z-index: 30;
+            font-weight: bold;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col custom-scrollbar">
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-flutter-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-flutter-DEFAULT via-flutter-dark to-flutter-light flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-flutter-light/20">
+                        <i class="fa-solid fa-route text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-flutter-light">Desarrollo Móvil • Clase 3</span>
+                        <h1 class="text-base font-bold text-white leading-tight">Navegación Multipantalla y Estructura Multi-Archivo</h1>
+                    </div>
+                </div>
+
+                <nav class="hidden xl:flex space-x-1 bg-slate-900/80 p-1.5 rounded-xl border border-flutter-border text-xs font-medium">
+                    <button onclick="switchTab('target-app')" id="tab-btn-target-app" class="tab-btn active px-3 py-1.5 rounded-lg text-white bg-slate-800 border border-slate-700 transition">
+                        <i class="fa-solid fa-eye mr-1 text-flutter-light"></i> 1. Meta Visual
+                    </button>
+                    <button onclick="switchTab('agenda')" id="tab-btn-agenda" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-regular fa-clock mr-1 text-flutter-light"></i> 2. Agenda
+                    </button>
+                    <button onclick="switchTab('theory-nav')" id="tab-btn-theory-nav" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-brain mr-1 text-flutter-light"></i> 3. Teoría de Navegación
+                    </button>
+                    <button onclick="switchTab('multi-file')" id="tab-btn-multi-file" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-folder-tree text-amber-400 mr-1"></i> 4. POO y Arquitectura `lib/`
+                    </button>
+                    <button onclick="switchTab('step-by-step')" id="tab-btn-step-by-step" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-list-ol mr-1 text-flutter-light"></i> 5. Paso a Paso
+                    </button>
+                    <button onclick="switchTab('evaluacion')" id="tab-btn-evaluacion" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-pen-ruler mr-1 text-flutter-light"></i> 6. Taller
+                    </button>
+                    <button onclick="switchTab('retos')" id="tab-btn-retos" class="tab-btn px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-trophy text-amber-400 mr-1"></i> 7. Reto Integrador
+                    </button>
+                </nav>
+
+                <div class="xl:hidden">
+                    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden xl:hidden border-t border-flutter-border bg-slate-900/95 px-4 pt-2 pb-4 space-y-1 text-xs">
+            <button onclick="switchTab('target-app'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-eye mr-2 text-flutter-light"></i> 1. Meta Visual (Suite Integrada)
+            </button>
+            <button onclick="switchTab('agenda'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-regular fa-clock mr-2 text-flutter-light"></i> 2. Agenda de la Clase
+            </button>
+            <button onclick="switchTab('theory-nav'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-brain mr-2 text-flutter-light"></i> 3. Teoría de Navegación (`Navigator`)
+            </button>
+            <button onclick="switchTab('multi-file'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-folder-tree mr-2 text-amber-400"></i> 4. POO y Arquitectura `lib/`
+            </button>
+            <button onclick="switchTab('step-by-step'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-list-ol mr-2 text-flutter-light"></i> 5. Construcción Paso a Paso
+            </button>
+            <button onclick="switchTab('evaluacion'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-pen-ruler mr-2 text-flutter-light"></i> 6. Taller de Comprobación
+            </button>
+            <button onclick="switchTab('retos'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-trophy mr-2 text-amber-400"></i> 7. Reto Integrador
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Hero Section -->
+        <section class="mb-8 rounded-2xl glass-panel p-6 sm:p-8 relative overflow-hidden border border-slate-700/60 shadow-2xl">
+            <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-flutter-light/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute right-1/3 -top-10 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div class="relative z-10 max-w-3xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-flutter-light/10 border border-flutter-light/30 text-flutter-light text-xs font-semibold mb-4">
+                    <span class="w-2 h-2 rounded-full bg-flutter-light animate-pulse"></span>
+                    Clase 3 • Ensamblado Multi-Archivo y Navegación
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                    Ensambla tus Proyectos en una Suite: <span class="gradient-text">Arquitectura POO & Navigator</span>
+                </h1>
+                <p class="mt-3 text-slate-300 text-base leading-relaxed">
+                    Aprende cómo migrar tus retos de la clase pasada a un único proyecto profesional con **múltiples archivos `.dart`**. Descubre **por qué necesitamos modelos de datos** en POO, cómo funciona el widget `Navigator` y cómo crear menús dinámicos con `ListView.builder`.
+                </p>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800 text-sm">
+                    <div>
+                        <span class="text-xs text-slate-400 block font-medium">Duración</span>
+                        <span class="text-lg font-bold text-white flex items-center gap-1.5"><i class="fa-regular fa-clock text-flutter-light"></i> 3.5 Horas</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block font-medium">Paradigma</span>
+                        <span class="text-lg font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-cubes text-cyan-400"></i> POO & Clases</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block font-medium">Estructura</span>
+                        <span class="text-lg font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-folder-tree text-amber-400"></i> Modular `lib/`</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block font-medium">Proyecto Final</span>
+                        <span class="text-lg font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-box-archive text-emerald-400"></i> ToolSuite App</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 1: META VISUAL / SIMULADOR -->
+        <section id="tab-target-app" class="tab-content block space-y-8">
+            <div class="border-b border-slate-800 pb-4 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-flutter-light/10 border border-flutter-light/30 text-flutter-light text-xs font-semibold mb-2">
+                        <i class="fa-solid fa-bullseye"></i> La Meta Visual de la Clase
+                    </div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-eye text-flutter-light"></i> 1. App "ToolSuite": Menú Hub de Herramientas
+                    </h2>
+                    <p class="text-slate-400 text-sm">Prueba cómo tus retos individuales se conectan en una sola aplicación con `Navigator.push()` y un menú dinámico en archivos `.dart` separados.</p>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleXRayMode()" id="btn-xray" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600/80 border border-indigo-400/50 text-white hover:bg-indigo-500 transition flex items-center gap-2 shadow-lg">
+                        <i class="fa-solid fa-layer-group"></i> <span id="xray-text">Activar Radiografía (Archivos y Rutas)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Phone Simulator Showcase -->
+                <div class="lg:col-span-5 sticky top-24">
+                    <div class="glass-panel p-5 rounded-3xl border border-slate-700 phone-mockup max-w-sm mx-auto bg-slate-950 shadow-2xl">
+                        <!-- Status Bar -->
+                        <div class="flex justify-between items-center text-[10px] text-slate-400 mb-2 px-2 font-mono">
+                            <span>10:45 AM</span>
+                            <div class="w-16 h-3 bg-slate-800 rounded-full mx-auto"></div>
+                            <div class="flex gap-1 items-center">
+                                <i class="fa-solid fa-wifi"></i>
+                                <i class="fa-solid fa-battery-full text-flutter-light text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Simulated Flutter Screen Container -->
+                        <div id="simulated-app-screen" class="bg-slate-100 text-slate-900 rounded-2xl overflow-hidden shadow-inner min-h-[490px] flex flex-col justify-between font-sans transition-all duration-300 xray-navigator relative">
+                            
+                            <!-- Drawer Overlay -->
+                            <div id="sim-drawer-overlay" class="absolute inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeSimDrawer()">
+                                <div class="w-3/4 h-full bg-white shadow-2xl flex flex-col justify-between xray-file-boundary" onclick="event.stopPropagation()">
+                                    <span class="xray-badge bg-amber-600 text-white">lib/widgets/menu_drawer.dart</span>
+                                    <div class="bg-indigo-600 text-white p-4">
+                                        <div class="w-12 h-12 rounded-full bg-white text-indigo-600 flex items-center justify-center text-xl font-bold mb-2">
+                                            <i class="fa-solid fa-cubes"></i>
+                                        </div>
+                                        <h4 class="font-bold text-sm">ToolSuite App</h4>
+                                        <p class="text-[10px] text-indigo-200">Suite de Ejercicios Móviles</p>
+                                    </div>
+                                    <div class="p-2 space-y-1 flex-1 text-xs">
+                                        <button onclick="closeSimDrawer()" class="w-full text-left p-2.5 rounded-lg bg-indigo-50 text-indigo-700 font-semibold flex items-center gap-3">
+                                            <i class="fa-solid fa-house"></i> Menú Principal
+                                        </button>
+                                        <button onclick="popToRootScreen(); closeSimDrawer();" class="w-full text-left p-2.5 rounded-lg hover:bg-slate-100 text-slate-700 flex items-center gap-3">
+                                            <i class="fa-solid fa-rotate-left"></i> Volver al Inicio
+                                        </button>
+                                    </div>
+                                    <div class="p-3 border-t text-[10px] text-slate-400 font-mono text-center">
+                                        Estructura Multi-Archivo Flutter
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Screen 1: Hub Menu View -->
+                            <div id="sim-screen-menu" class="flex-1 flex flex-col">
+                                <div class="bg-indigo-600 text-white p-3 shadow-md flex items-center justify-between">
+                                    <button onclick="openSimDrawer()" class="text-white hover:bg-indigo-700 p-1 rounded">
+                                        <i class="fa-solid fa-bars text-base"></i>
+                                    </button>
+                                    <span class="font-bold text-sm">ToolSuite - Menú Hub</span>
+                                    <i class="fa-solid fa-grip text-sm"></i>
+                                </div>
+
+                                <div class="p-3 flex-1 overflow-y-auto space-y-2.5 xray-listview" id="sim-hub-list">
+                                    <span class="xray-badge bg-emerald-600 text-white">ListView.builder (lib/screens/menu_screen.dart)</span>
+                                    
+                                    <!-- Tool 1: Cotizador -->
+                                    <div onclick="pushSimTool('cotizador')" class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                                <i class="fa-solid fa-truck-fast"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-bold text-xs text-slate-800">1. Cotizador de Envíos</h4>
+                                                <p class="text-[10px] text-slate-500">`screens/cotizador_screen.dart`</p>
+                                            </div>
+                                        </div>
+                                        <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                                    </div>
+
+                                    <!-- Tool 2: Encuesta -->
+                                    <div onclick="pushSimTool('encuesta')" class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:ring-2 hover:ring-emerald-500 transition flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                                <i class="fa-solid fa-star"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-bold text-xs text-slate-800">2. Encuesta de Feedback</h4>
+                                                <p class="text-[10px] text-slate-500">`screens/encuesta_screen.dart`</p>
+                                            </div>
+                                        </div>
+                                        <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Screen 2: Dynamic Tool View (Pushed via Navigator) -->
+                            <div id="sim-screen-tool" class="flex-1 flex-col hidden bg-slate-50 relative xray-file-boundary">
+                                <span class="xray-badge bg-amber-600 text-white" id="sim-tool-file-tag">lib/screens/...dart</span>
+                                
+                                <div class="bg-indigo-600 text-white p-3 shadow-md flex items-center gap-3">
+                                    <button onclick="popSimScreen()" class="text-white hover:bg-indigo-700 p-1 rounded">
+                                        <i class="fa-solid fa-arrow-left text-base"></i>
+                                    </button>
+                                    <span id="tool-appbar-title" class="font-bold text-sm truncate">Herramienta</span>
+                                </div>
+
+                                <div id="tool-body-content" class="p-4 flex-1 flex flex-col justify-between text-xs">
+                                    <!-- Dynamic content generated by JS -->
+                                </div>
+                            </div>
+
+                            <div class="p-2 bg-slate-200 text-center text-[9px] text-slate-600 font-mono border-t border-slate-300">
+                                📱 Navigator Stack Depth: <span id="stack-depth-label" class="font-bold text-indigo-700">Root [1]</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explanation & Stack Visualization -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group text-flutter-light"></i> Estado de la Pila de Rutas (`Route Stack`)
+                            </h3>
+                            <span class="text-xs bg-flutter-light/10 text-flutter-light border border-flutter-light/30 px-2.5 py-1 rounded-full font-mono">
+                                Estrategia LIFO (Last In, First Out)
+                            </span>
+                        </div>
+
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Interactúa con el teléfono de la izquierda. Al seleccionar una herramienta del menú, Flutter ejecuta <code>Navigator.push()</code> instanciando la pantalla que guardamos dentro de un **archivo `.dart` independiente**.
+                        </p>
+
+                        <!-- Visual Stack Container -->
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 font-mono text-xs">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Estructura Activa en Memoria RAM:</span>
+                            
+                            <div id="stack-visual-top" class="p-3 bg-indigo-600/30 border-2 border-indigo-500 rounded-xl text-indigo-300 font-bold hidden transition-all">
+                                <div class="flex justify-between items-center">
+                                    <span><i class="fa-solid fa-mobile-screen mr-2"></i> 2. <span id="stack-tool-class">CotizadorScreen</span></span>
+                                    <span class="text-[10px] bg-indigo-900 px-2 py-0.5 rounded">Navigator.push()</span>
+                                </div>
+                                <span class="text-[10px] font-normal text-amber-300 block mt-1">Archivo Origen: <code id="stack-tool-file">lib/screens/cotizador_screen.dart</code></span>
+                            </div>
+
+                            <div class="p-3 bg-emerald-600/20 border-2 border-emerald-500 rounded-xl text-emerald-300 font-bold">
+                                <div class="flex justify-between items-center">
+                                    <span><i class="fa-solid fa-list mr-2"></i> 1. MenuScreen (Root)</span>
+                                    <span class="text-[10px] bg-emerald-950 px-2 py-0.5 rounded">Base Screen</span>
+                                </div>
+                                <span class="text-[10px] font-normal text-emerald-400 block mt-1">Archivo Origen: <code>lib/screens/menu_screen.dart</code></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-1">
+                                <strong class="text-flutter-light block font-mono">Navigator.push()</strong>
+                                <span class="text-slate-400 text-[11px]">Empuja la pantalla secundaria sobre la pila. La pantalla previa no se destruye, queda pausada en segundo plano.</span>
+                            </div>
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-1">
+                                <strong class="text-rose-400 block font-mono">Navigator.pop()</strong>
+                                <span class="text-slate-400 text-[11px]">Destruye la pantalla superior y libera su estado de la memoria RAM, regresando al menú principal.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: AGENDA DE LA CLASE -->
+        <section id="tab-agenda" class="tab-content hidden space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-regular fa-calendar-check text-flutter-light"></i> 2. Cronograma de la Clase 3 (3.5 Horas)
+                    </h2>
+                    <p class="text-slate-400 text-sm">Distribución por bloques conceptuales, arquitectura multi-archivo y práctica integradora.</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl flex items-center gap-3">
+                    <span class="text-xs text-slate-400 font-mono uppercase">Temporizador:</span>
+                    <button onclick="startTimer()" id="timer-btn" class="px-3 py-1 text-xs font-bold rounded-lg bg-flutter-light text-slate-950 hover:bg-cyan-300 transition">
+                        <i class="fa-solid fa-play mr-1"></i> Iniciar Cronómetro
+                    </button>
+                    <span id="timer-display" class="font-mono text-base font-bold text-flutter-light">00:00:00</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Bloque 1 -->
+                <div class="glass-panel p-5 rounded-xl border border-slate-700/80 hover:border-flutter-light/50 transition flex flex-col justify-between">
+                    <div>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase font-mono block mb-2 w-max">
+                            Bloque 1 • 45 Min
+                        </span>
+                        <h3 class="text-base font-bold text-white mb-2">Anatomía de la Navegación</h3>
+                        <p class="text-slate-300 text-xs mb-3">Widgets `Navigator`, `OverlayState`, `MaterialPageRoute`, `BuildContext` y rutas anónimas vs nombradas.</p>
+                    </div>
+                    <button onclick="switchTab('theory-nav')" class="text-flutter-light hover:underline font-semibold text-xs text-left">
+                        Ver Teoría de Navegación <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Bloque 2 -->
+                <div class="glass-panel p-5 rounded-xl border border-slate-700/80 hover:border-flutter-light/50 transition flex flex-col justify-between">
+                    <div>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase font-mono block mb-2 w-max">
+                            Bloque 2 • 50 Min
+                        </span>
+                        <h3 class="text-base font-bold text-white mb-2">POO y Arquitectura Multi-Archivo</h3>
+                        <p class="text-slate-300 text-xs mb-3">¿Por qué creamos modelos de datos? Estructura de carpetas en `lib/`, `import`s en Dart y clases.</p>
+                    </div>
+                    <button onclick="switchTab('multi-file')" class="text-amber-400 hover:underline font-semibold text-xs text-left">
+                        Ver POO y Carpetas <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Bloque 3 -->
+                <div class="glass-panel p-5 rounded-xl border border-slate-700/80 hover:border-flutter-light/50 transition flex flex-col justify-between">
+                    <div>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase font-mono block mb-2 w-max">
+                            Bloque 3 • 75 Min
+                        </span>
+                        <h3 class="text-base font-bold text-white mb-2">Paso a Paso Integrador</h3>
+                        <p class="text-slate-300 text-xs mb-3">Ensamblar la suite uniendo las pantallas en archivos separados con `ListView.builder`.</p>
+                    </div>
+                    <button onclick="switchTab('step-by-step')" class="text-emerald-400 hover:underline font-semibold text-xs text-left">
+                        Ir al Paso a Paso <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Bloque 4 -->
+                <div class="glass-panel p-5 rounded-xl border border-slate-700/80 hover:border-flutter-light/50 transition flex flex-col justify-between">
+                    <div>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 uppercase font-mono block mb-2 w-max">
+                            Bloque 4 • 40 Min
+                        </span>
+                        <h3 class="text-base font-bold text-white mb-2">Taller y Reto de Aplicación</h3>
+                        <p class="text-slate-300 text-xs mb-3">Evaluación rápida y asignación del reto autónomo multi-pantalla.</p>
+                    </div>
+                    <button onclick="switchTab('retos')" class="text-purple-400 hover:underline font-semibold text-xs text-left">
+                        Ir al Reto Práctico <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: TEORÍA DE NAVEGACIÓN -->
+        <section id="tab-theory-nav" class="tab-content hidden space-y-8">
+            <div class="border-b border-slate-800 pb-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-flutter-light/10 border border-flutter-light/30 text-flutter-light text-xs font-semibold mb-2">
+                    <i class="fa-solid fa-brain"></i> Fundamento Técnico
+                </div>
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-route text-flutter-light"></i> 3. ¿Cómo Funciona Realmente la Navegación en Flutter?
+                </h2>
+                <p class="text-slate-400 text-sm">Comprende los widgets internos que gestionan la pila de pantallas y el rol de `BuildContext` y `MaterialPageRoute`.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Concept 1 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-bold">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white">1. El Widget `Navigator`</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        En Flutter, `Navigator` es un **StatefulWidget** que administra un widget especial llamado <code>Overlay</code>. El `Overlay` gestiona una lista flotante de elementos gráficos ordenados visualmente uno sobre otro.
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-indigo-300">
+                        NavigatorState state = Navigator.of(context);
+                    </div>
+                </div>
+
+                <!-- Concept 2 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold">
+                        <i class="fa-solid fa-film"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white">2. `MaterialPageRoute`</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Es una ruta modal que reemplaza toda la pantalla con una animación de transición nativa. En **Android** se desliza verticalmente con desvanecimiento; en **iOS** entra desde la derecha.
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-emerald-300">
+                        MaterialPageRoute(builder: (context) => NuevaPantalla())
+                    </div>
+                </div>
+
+                <!-- Concept 3 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg font-bold">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white">3. El Rol de `BuildContext`</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        El `context` es el **mapa de posición** de un widget en el árbol. Cuando llamas a `Navigator.push(context, ...)`, Flutter busca hacia arriba en el árbol el widget `Navigator` más cercano.
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-amber-300">
+                        // Busca el Navigator en el ancestro
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table: Anonymous vs Named Routes -->
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-code-compare text-flutter-light"></i> Rutas Anónimas (`push`) vs Rutas Nombradas (`pushNamed`)
+                </h3>
+
+                <div class="overflow-x-auto text-xs">
+                    <table class="w-full text-left border-collapse font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 text-[10px] uppercase">
+                                <th class="p-3">Estrategia</th>
+                                <th class="p-3 text-flutter-light">Código de Uso</th>
+                                <th class="p-3">Ventaja Principal</th>
+                                <th class="p-3">Uso Recomendado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 text-[11px]">
+                            <tr>
+                                <td class="p-3 font-bold text-white">Rutas Anónimas</td>
+                                <td class="p-3 text-sky-300"><code>Navigator.push(context, MaterialPageRoute(...))</code></td>
+                                <td class="p-3 text-slate-300">Permite pasar objetos directamente en el constructor.</td>
+                                <td class="p-3 text-slate-400">Apps pequeñas, listas dinámicas con parámetros.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3 font-bold text-white">Rutas Nombradas</td>
+                                <td class="p-3 text-emerald-300"><code>Navigator.pushNamed(context, '/cotizador')</code></td>
+                                <td class="p-3 text-slate-300">Centraliza las rutas en un mapa global dentro de `MaterialApp`.</td>
+                                <td class="p-3 text-slate-400">Apps medianas/grandes con menús fijos.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: POO Y ARQUITECTURA MULTI-ARCHIVO -->
+        <section id="tab-multi-file" class="tab-content hidden space-y-8">
+            <div class="border-b border-slate-800 pb-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold mb-2">
+                    <i class="fa-solid fa-folder-tree"></i> Fundamentos de POO & Arquitectura
+                </div>
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sitemap text-amber-400"></i> 4. ¿Por qué usamos Modelos de Datos en POO y Estructura `lib/`?
+                </h2>
+                <p class="text-slate-400 text-sm">Supera la práctica de escribir todo en un solo archivo `main.dart`. Descubre el valor pedagógico de la Programación Orientada a Objetos en Flutter.</p>
+            </div>
+
+            <!-- Deep POO Explanation Box -->
+            <div class="glass-panel p-6 rounded-2xl border border-amber-500/40 bg-slate-900/90 space-y-4">
+                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-cubes"></i> 🧠 ¿Qué es una Clase Modelo y Por Qué la Necesitamos?
+                </h3>
+                
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    En la semana pasada creaste aplicaciones en archivos independientes. Ahora, para unirlas en un solo menú con <code>ListView.builder</code>, necesitamos representar las opciones del menú como **objetos del mundo real**. En Dart, esto se logra mediante **Programación Orientada a Objetos (POO)**.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="text-flutter-light font-bold block">1. Tipado Fuerte (Strong Typing)</span>
+                        <p class="text-slate-400 text-[11px]">En lugar de usar Listas de Mapas genéricos (<code>Map&lt;String, dynamic&gt;</code>) propensos a errores de tipeo, una clase como <code>Herramienta</code> le exige al compilador que cada ítem tenga exactamente las propiedades esperadas.</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="text-emerald-400 font-bold block">2. Polimorfismo & Widgets como Objetos</span>
+                        <p class="text-slate-400 text-[11px]">En Flutter, las pantallas secundarias (<code>CotizadorScreen</code>, <code>EncuestaScreen</code>) son clases que heredan de <code>Widget</code>. ¡Por eso podemos guardar una pantalla completa dentro del atributo <code>final Widget pantallaDestino</code>!</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <span class="text-amber-400 font-bold block">3. Desacoplamiento Limpio</span>
+                        <p class="text-slate-400 text-[11px]">Separar la estructura del objeto (<code>models/herramienta.dart</code>) de la interfaz gráfica (<code>screens/menu_screen.dart</code>) facilita que la app crezca sin enredar el código.</p>
+                    </div>
+                </div>
+
+                <!-- Expanded Breakdown for Drawer & Dynamic ListView -->
+                <div class="mt-4 p-4 bg-slate-950/80 rounded-xl border border-amber-500/30 space-y-3 font-mono text-xs">
+                    <h4 class="text-flutter-light font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-bars-staggered"></i> Anatomía Detallada del Menú: Drawer y ListView Dinámico
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-300">
+                        <div class="space-y-1.5 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                            <span class="text-amber-400 font-bold block">🍔 1. ¿Cómo Funciona el Menú Hamburguesa (`Drawer`)?</span>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                Cuando le pasas la propiedad <code>drawer: Drawer(...)</code> al <code>Scaffold</code>, Flutter detecta automáticamente su presencia y <strong>coloca el icono de hamburguesa</strong> en el <code>AppBar</code>. Al tocar el icono, Flutter abre un panel deslizante lateral que se sobrepone como un <em>Overlay</em>. Para cerrarlo programáticamente usas <code>Navigator.pop(context)</code>.
+                            </p>
+                        </div>
+                        <div class="space-y-1.5 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                            <span class="text-emerald-400 font-bold block">⚡ 2. ¿Cómo Ocurre la Navegación Dinámica?</span>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                En lugar de escribir un <code>if/else</code> o <code>switch</code> para cada pantalla, el <code>ListView.builder</code> toma <code>item.pantallaDestino</code> (que es una instancia de la pantalla) y se la pasa directamente a <code>MaterialPageRoute(builder: (_) =&gt; item.pantallaDestino)</code>. ¡Si agregas 50 herramientas a la lista, el código del menú no cambia!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Folder Tree Interactive Showcase -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-5 glass-panel p-6 rounded-2xl border border-slate-700 space-y-3 font-mono text-xs">
+                    <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-amber-400"></i> Estructura del Directorio `lib/`
+                    </h3>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-slate-300">
+                        <div class="text-flutter-light font-bold">📁 tool_suite_app/</div>
+                        <div class="pl-4 border-l border-slate-800 space-y-1">
+                            <div>📁 android/</div>
+                            <div>📁 ios/</div>
+                            <div class="text-amber-300 font-bold">📁 lib/</div>
+                            <div class="pl-4 border-l border-slate-700 space-y-1 text-[11px]">
+                                <div onclick="showFileDetails('main')" class="cursor-pointer hover:text-flutter-light text-slate-200 flex items-center gap-1">
+                                    <i class="fa-solid fa-file-code text-blue-400"></i> main.dart
+                                </div>
+                                <div class="text-emerald-400 font-bold">📁 models/</div>
+                                <div class="pl-4 border-l border-slate-700">
+                                    <div onclick="showFileDetails('herramienta_model')" class="cursor-pointer hover:text-flutter-light text-slate-300">
+                                        <i class="fa-solid fa-file-code text-emerald-400"></i> herramienta.dart
+                                    </div>
+                                </div>
+                                <div class="text-purple-400 font-bold">📁 screens/</div>
+                                <div class="pl-4 border-l border-slate-700 space-y-0.5">
+                                    <div onclick="showFileDetails('menu_screen')" class="cursor-pointer hover:text-flutter-light text-slate-300">
+                                        <i class="fa-solid fa-file-code text-purple-400"></i> menu_screen.dart
+                                    </div>
+                                    <div onclick="showFileDetails('cotizador_screen')" class="cursor-pointer hover:text-flutter-light text-slate-300">
+                                        <i class="fa-solid fa-file-code text-purple-400"></i> cotizador_screen.dart
+                                    </div>
+                                    <div onclick="showFileDetails('encuesta_screen')" class="cursor-pointer hover:text-flutter-light text-slate-300">
+                                        <i class="fa-solid fa-file-code text-purple-400"></i> encuesta_screen.dart
+                                    </div>
+                                </div>
+                            </div>
+                            <div>📄 pubspec.yaml</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                    <div id="file-detail-card" class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <span class="font-mono text-sm font-bold text-flutter-light" id="file-detail-title">lib/main.dart</span>
+                            <span class="text-[10px] bg-slate-900 border border-slate-700 text-slate-400 px-2 py-0.5 rounded font-mono" id="file-detail-tag">Punto de Entrada</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed" id="file-detail-desc">
+                            Contiene únicamente la función <code>main()</code> y la configuración del widget <code>MaterialApp</code>. No debe acumular el diseño de las pantallas secundarias.
+                        </p>
+
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-sky-300 overflow-x-auto">
+                            <pre id="file-detail-code">import 'package:flutter/material.dart';
+import 'screens/menu_screen.dart'; // Importación de la pantalla inicial
+
+void main() {
+  runApp(const MiSuiteApp());
+}</pre>
+                        </div>
+                    </div>
+
+                    <!-- Guide for Creating New Project & Adding Dart Files -->
+                    <div class="glass-panel p-5 rounded-xl border border-amber-500/40 bg-slate-900/90 space-y-3 text-xs">
+                        <h4 class="text-sm font-bold text-amber-400 flex items-center gap-2 font-mono">
+                            <i class="fa-solid fa-square-plus"></i> Guía Rápida: Crear el Proyecto e Importar Pantallas
+                        </h4>
+                        <ol class="space-y-2 text-slate-300 list-decimal list-inside leading-relaxed font-mono">
+                            <li><strong class="text-white">Crear Proyecto:</strong> Abre la terminal y ejecuta <code>flutter create tool_suite_app</code> (o desde VS Code: <code>Ctrl+Shift+P</code> &rarr; <code>Flutter: New Project</code>).</li>
+                            <li><strong class="text-white">Crear Carpetas:</strong> Haz clic derecho en <code>lib/</code> &rarr; <code>New Folder</code> y crea las carpetas <code>models</code> y <code>screens</code>.</li>
+                            <li><strong class="text-white">Crear Archivos `.dart`:</strong> Dentro de <code>lib/screens/</code> crea los archivos para cada pantalla (ejemplo: <code>cotizador_screen.dart</code>, <code>encuesta_screen.dart</code>).</li>
+                            <li><strong class="text-white">Pegar Código de la Clase 2:</strong> Pega la clase del widget correspondiente en cada archivo asegurándote de incluir <code>import 'package:flutter/material.dart';</code> en la primera línea.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: PASO A PASO CÓDIGO MULTI-ARCHIVO -->
+        <section id="tab-step-by-step" class="tab-content hidden space-y-8">
+            <div class="border-b border-slate-800 pb-4 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-flutter-light"></i> 5. Paso a Paso: Construyendo la Suite Integrada
+                    </h2>
+                    <p class="text-slate-400 text-sm">Construye la aplicación ensamblando los archivos `.dart` en orden estricto.</p>
+                </div>
+                <button onclick="copyCode('full-suite-code')" class="px-4 py-2 bg-flutter-light text-slate-950 font-bold rounded-xl hover:bg-cyan-300 transition text-xs flex items-center gap-2">
+                    <i class="fa-regular fa-copy"></i> Copiar Todo el Proyecto Integrado
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Paso 0: Creación e Integración -->
+                <div class="glass-panel p-6 rounded-2xl border border-amber-500/40 bg-slate-900/90 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                        <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs font-mono">0</span>
+                        <h3 class="text-base font-bold text-white">Paso Inicial: Crear Proyecto y Organizar Archivos</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Preparamos la estructura de nuestro nuevo proyecto en VS Code o Android Studio:
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                            <span class="text-amber-400 font-bold block">1. Comando para crear el proyecto:</span>
+                            <code class="text-emerald-300">flutter create tool_suite_app</code>
+                            <code class="text-slate-400 block text-[10px] mt-1">cd tool_suite_app</code>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                            <span class="text-amber-400 font-bold block">2. Estructura de carpetas en `lib/`:</span>
+                            <span class="text-slate-300 block">📁 lib/</span>
+                            <span class="text-slate-300 block pl-3">├── 📁 models/</span>
+                            <span class="text-slate-300 block pl-3">└── 📁 screens/</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1 font-mono">
+                        <span class="text-flutter-light font-bold block">3. Crear los archivos de pantallas en `lib/screens/`:</span>
+                        <p class="text-slate-400">Crea los archivos e incluye el código de los retos desarrollados previamente:</p>
+                        <ul class="list-disc list-inside text-sky-300 pl-2 space-y-0.5">
+                            <li><code>lib/screens/cotizador_screen.dart</code> &rarr; Pega la clase <code>CotizadorScreen</code></li>
+                            <li><code>lib/screens/encuesta_screen.dart</code> &rarr; Pega la clase <code>EncuestaScreen</code></li>
+                        </ul>
+                        <p class="text-amber-300/80 text-[10px] pt-1"><i class="fa-solid fa-lightbulb"></i> Recuerda incluir <code>import 'package:flutter/material.dart';</code> en la primera línea de cada uno de estos archivos.</p>
+                    </div>
+                </div>
+
+                <!-- Paso 1 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                        <span class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-xs font-mono">1</span>
+                        <h3 class="text-base font-bold text-white">Archivo 1: `lib/models/herramienta.dart`</h3>
+                    </div>
+                    <p class="text-xs text-slate-300">Creamos el modelo de datos POO para definir cada tarjeta del menú de la Suite.</p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto">
+<pre>import 'package:flutter/material.dart';
+
+class Herramienta {
+  final String id;
+  final String titulo;
+  final String descripcion;
+  final IconData icono;
+  final Color color;
+  final Widget pantallaDestino;
+
+  Herramienta({
+    required this.id,
+    required this.titulo,
+    required this.descripcion,
+    required this.icono,
+    required this.color,
+    required this.pantallaDestino,
+  });
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Paso 2 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                        <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs font-mono">2</span>
+                        <h3 class="text-base font-bold text-white">Archivo 2: `lib/main.dart`</h3>
+                    </div>
+                    <p class="text-xs text-slate-300">Punto de entrada que configura el tema principal y delega la vista de inicio a `MenuScreen`.</p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto">
+<pre>import 'package:flutter/material.dart';
+import 'screens/menu_screen.dart';
+
+void main() {
+  runApp(const MiSuiteApp());
+}
+
+class MiSuiteApp extends StatelessWidget {
+  const MiSuiteApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'ToolSuite App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
+      home: const MenuScreen(),
+    );
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Paso 3 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs font-mono">3</span>
+                        <h3 class="text-base font-bold text-white">Archivo 3: `lib/screens/menu_screen.dart` (Con Drawer y ListView Dinámico)</h3>
+                    </div>
+                    <p class="text-xs text-slate-300">Menú Hub con menú hamburguesa (<code>Drawer</code>) y <code>ListView.builder</code> que importa las pantallas de los ejercicios y navega dinámicamente.</p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-80 custom-scrollbar">
+<pre>import 'package:flutter/material.dart';
+import '../models/herramienta.dart';
+import 'cotizador_screen.dart';
+import 'encuesta_screen.dart';
+
+class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. LISTA DINÁMICA DE OBJETOS MODELO
+    final List&lt;Herramienta&gt; herramientas = [
+      Herramienta(
+        id: '1',
+        titulo: 'Cotizador de Envíos',
+        descripcion: 'Calcula fletes según peso y destino',
+        icono: Icons.local_shipping,
+        color: Colors.indigo,
+        pantallaDestino: const CotizadorScreen(),
+      ),
+      Herramienta(
+        id: '2',
+        titulo: 'Encuesta de Feedback',
+        descripcion: 'Valora el servicio de atención',
+        icono: Icons.rate_review,
+        color: Colors.green,
+        pantallaDestino: const EncuestaScreen(),
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ToolSuite - Menú Hub'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      // 2. MENÚ HAMBURGUESA (DRAWER LATERAL)
+      // Al incluir 'drawer', Flutter dibuja automáticamente el botón hamburguesa en el AppBar
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.indigo),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.apps, color: Colors.indigo, size: 28),
+                  ),
+                  SizedBox(height: 10),
+                  Text('ToolSuite App', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Suite de Ejercicios Móviles', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Menú Principal'),
+              onTap: () =&gt; Navigator.pop(context), // Cierra el Drawer
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Acerca de la App'),
+              onTap: () {
+                Navigator.pop(context); // Cierra el Drawer antes de abrir el dialogo
+                showDialog(
+                  context: context,
+                  builder: (context) =&gt; AlertDialog(
+                    title: const Text('Acerca de ToolSuite'),
+                    content: const Text('Aplicación integradora de retos construida en Flutter con arquitectura multi-archivo.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () =&gt; Navigator.pop(context),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      // 3. RENDERIZADO DINÁMICO DE PANTALLAS
+      body: ListView.builder(
+        padding: const EdgeInsets.all(12.0),
+        itemCount: herramientas.length,
+        itemBuilder: (context, index) {
+          final item = herramientas[index]; // Extrae el objeto de la lista según el índice
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: item.color,
+                child: Icon(item.icono, color: Colors.white),
+              ),
+              title: Text(item.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(item.descripcion),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                // NAVEGACIÓN DINÁMICA UTILIZANDO LA INSTANCIA DE WIDGET GUARDADA EN EL MODELO
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) =&gt; item.pantallaDestino),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Paso 4 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2 flex-wrap">
+                        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center text-xs font-mono">4</span>
+                        <h3 class="text-base font-bold text-white">Archivo 4: `lib/screens/cotizador_screen.dart` (Reto 1 de la Clase 2)</h3>
+                        <span class="ml-auto text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2 py-1 rounded">Viene de la Clase 2</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Aquí migramos íntegro el <strong>Reto 1</strong> de la clase pasada. Fíjate en que la pantalla ya no lleva <code>main()</code> ni <code>MaterialApp</code>: es solo un widget que el <code>Navigator</code> apila cuando el usuario toca la tarjeta del menú.</p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-80 custom-scrollbar">
+<pre>import 'package:flutter/material.dart';
+
+class CotizadorScreen extends StatefulWidget {
+  const CotizadorScreen({super.key});
+
+  @override
+  State&lt;CotizadorScreen&gt; createState() =&gt; _CotizadorScreenState();
+}
+
+class _CotizadorScreenState extends State&lt;CotizadorScreen&gt; {
+  final TextEditingController _pesoController =
+      TextEditingController(text: '2.5');
+
+  final Map&lt;String, double&gt; _ciudades = {
+    'Bogotá': 8000,
+    'Medellín': 12000,
+    'Cali': 14000,
+  };
+
+  final Map&lt;String, double&gt; _velocidades = {
+    'Estándar': 0,
+    'Express': 5000,
+    'Súper Express': 10000,
+  };
+
+  String _ciudadSeleccionada = 'Bogotá';
+  String _tipoEnvio = 'Estándar';
+  bool _conSeguro = false;
+
+  double _total = 0;
+  bool _calculado = false;
+
+  @override
+  void dispose() {
+    _pesoController.dispose();
+    super.dispose();
+  }
+
+  void _calcularEnvio() {
+    final double peso =
+        double.tryParse(_pesoController.text.replaceAll(',', '.')) ?? 0;
+
+    setState(() {
+      _total = _ciudades[_ciudadSeleccionada]! +
+          (peso * 2000) +
+          _velocidades[_tipoEnvio]! +
+          (_conSeguro ? 3000 : 0);
+      _calculado = true;
+    });
+  }
+
+  String _pesos(double valor) {
+    final String entero = valor.round().toString();
+    final RegExp patron = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+    return '\$${entero.replaceAllMapped(patron, (Match m) =&gt; '${m[1]}.')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cotizador de Envíos'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _pesoController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Peso del paquete (Kg)',
+                hintText: 'Ej. 2.5',
+                prefixIcon: const Icon(Icons.scale),
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField&lt;String&gt;(
+              value: _ciudadSeleccionada,
+              decoration: InputDecoration(
+                labelText: 'Ciudad de destino',
+                prefixIcon: const Icon(Icons.location_city),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              items: _ciudades.keys.map((String ciudad) {
+                return DropdownMenuItem&lt;String&gt;(
+                  value: ciudad,
+                  child: Text('$ciudad  ·  ${_pesos(_ciudades[ciudad]!)}'),
+                );
+              }).toList(),
+              onChanged: (String? valor) {
+                if (valor == null) return;
+                setState(() =&gt; _ciudadSeleccionada = valor);
+              },
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 1,
+              child: Column(
+                children: _velocidades.keys.map((String tipo) {
+                  return RadioListTile&lt;String&gt;(
+                    dense: true,
+                    title: Text(tipo),
+                    subtitle: Text('Recargo: ${_pesos(_velocidades[tipo]!)}'),
+                    value: tipo,
+                    groupValue: _tipoEnvio,
+                    onChanged: (String? valor) {
+                      if (valor == null) return;
+                      setState(() =&gt; _tipoEnvio = valor);
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 1,
+              child: SwitchListTile(
+                title: const Text('Seguro de mercancía'),
+                subtitle: const Text('Cobertura adicional por \$3.000'),
+                secondary: const Icon(Icons.verified_user),
+                value: _conSeguro,
+                onChanged: (bool valor) =&gt; setState(() =&gt; _conSeguro = valor),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _calcularEnvio,
+              icon: const Icon(Icons.calculate),
+              label: const Text('COTIZAR ENVÍO'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 0,
+              color: Colors.indigo.shade50,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.indigo.shade100),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      _calculado
+                          ? 'VALOR TOTAL COTIZADO'
+                          : 'PRESIONA COTIZAR PARA VER EL VALOR',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _calculado ? _pesos(_total) : '--',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A237E),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Paso 5 -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2 flex-wrap">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs font-mono">5</span>
+                        <h3 class="text-base font-bold text-white">Archivo 5: `lib/screens/encuesta_screen.dart` (Reto 2 de la Clase 2)</h3>
+                        <span class="ml-auto text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded">Viene de la Clase 2</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Segunda pantalla de la suite. Observa el uso de <code>ScaffoldMessenger.of(context).showSnackBar(...)</code>: funciona porque esta pantalla está apilada dentro del mismo <code>Navigator</code> del <code>MaterialApp</code>.</p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-80 custom-scrollbar">
+<pre>import 'package:flutter/material.dart';
+
+class EncuestaScreen extends StatefulWidget {
+  const EncuestaScreen({super.key});
+
+  @override
+  State&lt;EncuestaScreen&gt; createState() =&gt; _EncuestaScreenState();
+}
+
+class _EncuestaScreenState extends State&lt;EncuestaScreen&gt; {
+  double _calificacion = 8.0;
+
+  final Map&lt;String, bool&gt; _aspectos = {
+    'Velocidad': true,
+    'Amabilidad': true,
+    'Calidad del producto': false,
+  };
+
+  final List&lt;String&gt; _canales = ['Presencial', 'Virtual', 'Telefónico'];
+  String _canalSeleccionado = 'Presencial';
+
+  List&lt;String&gt; get _aspectosMarcados =&gt; _aspectos.entries
+      .where((MapEntry&lt;String, bool&gt; e) =&gt; e.value)
+      .map((MapEntry&lt;String, bool&gt; e) =&gt; e.key)
+      .toList();
+
+  void _enviarEncuesta() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '¡Gracias! Registramos ${_calificacion.round()}/10 vía $_canalSeleccionado',
+        ),
+        backgroundColor: Colors.green.shade700,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Encuesta de Feedback'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Nivel de satisfacción',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${_calificacion.round()} / 10',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _calificacion,
+                      min: 1.0,
+                      max: 10.0,
+                      divisions: 9,
+                      label: _calificacion.round().toString(),
+                      activeColor: Colors.green,
+                      onChanged: (double valor) {
+                        setState(() =&gt; _calificacion = valor);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 1,
+              child: Column(
+                children: _aspectos.keys.map((String aspecto) {
+                  return CheckboxListTile(
+                    dense: true,
+                    activeColor: Colors.green,
+                    title: Text(aspecto),
+                    value: _aspectos[aspecto],
+                    onChanged: (bool? valor) {
+                      setState(() =&gt; _aspectos[aspecto] = valor ?? false);
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Canal de atención utilizado',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8.0,
+              children: _canales.map((String canal) {
+                return ChoiceChip(
+                  label: Text(canal),
+                  selected: _canalSeleccionado == canal,
+                  selectedColor: Colors.green.shade100,
+                  onSelected: (bool seleccionado) {
+                    if (!seleccionado) return;
+                    setState(() =&gt; _canalSeleccionado = canal);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 0,
+              color: Colors.green.shade50,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.green.shade100),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RESUMEN DE LA VALORACIÓN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_calificacion.round()}/10',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text('Canal: $_canalSeleccionado'),
+                    Text(
+                      _aspectosMarcados.isEmpty
+                          ? 'Sin aspectos destacados'
+                          : 'Destaca: ${_aspectosMarcados.join(', ')}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _enviarEncuesta,
+              icon: const Icon(Icons.send),
+              label: const Text('ENVIAR RESPUESTA'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Paso 6: Ampliación opcional -->
+                <div class="glass-panel p-6 rounded-2xl border border-purple-500/40 bg-slate-900/90 space-y-3">
+                    <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                        <span class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center text-xs font-mono">6</span>
+                        <h3 class="text-base font-bold text-white">Paso Extra: Sumar los Retos 3 y 4 a la Suite</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Copia también <code>propina_screen.dart</code> (Reto 3) y <code>citas_screen.dart</code> (Reto 4) desde la Clase 2 a <code>lib/screens/</code>. <strong>El menú no cambia:</strong> solo agregas dos objetos más a la lista y el <code>ListView.builder</code> los dibuja y navega solo. Esa es la ventaja de la lista dinámica de modelos.
+                    </p>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto">
+<pre>// 1. Nuevos imports en lib/screens/menu_screen.dart
+import 'propina_screen.dart';
+import 'citas_screen.dart';
+
+// 2. Dos elementos más dentro de la lista 'herramientas'
+Herramienta(
+  id: '3',
+  titulo: 'Propinas y División',
+  descripcion: 'Divide la cuenta entre varias personas',
+  icono: Icons.receipt_long,
+  color: Colors.deepPurple,
+  pantallaDestino: const PropinaScreen(),
+),
+Herramienta(
+  id: '4',
+  titulo: 'Agendar Cita Médica',
+  descripcion: 'Reserva turno con showDatePicker()',
+  icono: Icons.calendar_month,
+  color: Colors.teal,
+  pantallaDestino: const CitasScreen(),
+),</pre>
+                    </div>
+                </div>
+
+                <!-- Hidden full suite block for copy -->
+                <div class="hidden">
+                    <pre id="full-suite-code">// ============================================================================
+// ARCHIVO 1: lib/models/herramienta.dart
+// ============================================================================
+import 'package:flutter/material.dart';
+
+class Herramienta {
+  final String id;
+  final String titulo;
+  final String descripcion;
+  final IconData icono;
+  final Color color;
+  final Widget pantallaDestino;
+
+  Herramienta({
+    required this.id,
+    required this.titulo,
+    required this.descripcion,
+    required this.icono,
+    required this.color,
+    required this.pantallaDestino,
+  });
+}
+
+// ============================================================================
+// ARCHIVO 2: lib/main.dart
+// ============================================================================
+import 'package:flutter/material.dart';
+import 'screens/menu_screen.dart';
+
+void main() {
+  runApp(const MiSuiteApp());
+}
+
+class MiSuiteApp extends StatelessWidget {
+  const MiSuiteApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'ToolSuite App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
+      home: const MenuScreen(),
+    );
+  }
+}
+
+// ============================================================================
+// ARCHIVO 3: lib/screens/menu_screen.dart
+// ============================================================================
+import 'package:flutter/material.dart';
+import '../models/herramienta.dart';
+import 'cotizador_screen.dart';
+import 'encuesta_screen.dart';
+
+class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final List&lt;Herramienta&gt; herramientas = [
+      Herramienta(
+        id: '1',
+        titulo: 'Cotizador de Envíos',
+        descripcion: 'Calcula fletes según peso y destino',
+        icono: Icons.local_shipping,
+        color: Colors.indigo,
+        pantallaDestino: const CotizadorScreen(),
+      ),
+      Herramienta(
+        id: '2',
+        titulo: 'Encuesta de Feedback',
+        descripcion: 'Valora el servicio de atención',
+        icono: Icons.rate_review,
+        color: Colors.green,
+        pantallaDestino: const EncuestaScreen(),
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ToolSuite - Menú Hub'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.indigo),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.apps, color: Colors.indigo, size: 28),
+                  ),
+                  SizedBox(height: 10),
+                  Text('ToolSuite App', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Suite de Ejercicios Móviles', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Menú Principal'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Acerca de la App'),
+              onTap: () {
+                Navigator.pop(context);
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Acerca de ToolSuite'),
+                    content: const Text('Aplicación integradora de retos construida en Flutter con arquitectura multi-archivo.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(12.0),
+        itemCount: herramientas.length,
+        itemBuilder: (context, index) {
+          final item = herramientas[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: item.color,
+                child: Icon(item.icono, color: Colors.white),
+              ),
+              title: Text(item.titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(item.descripcion),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => item.pantallaDestino),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ARCHIVO 4: lib/screens/cotizador_screen.dart  (Reto 1 de la Clase 2)
+// ============================================================================
+import 'package:flutter/material.dart';
+
+class CotizadorScreen extends StatefulWidget {
+  const CotizadorScreen({super.key});
+
+  @override
+  State&lt;CotizadorScreen&gt; createState() =&gt; _CotizadorScreenState();
+}
+
+class _CotizadorScreenState extends State&lt;CotizadorScreen&gt; {
+  final TextEditingController _pesoController =
+      TextEditingController(text: '2.5');
+
+  final Map&lt;String, double&gt; _ciudades = {
+    'Bogotá': 8000,
+    'Medellín': 12000,
+    'Cali': 14000,
+  };
+
+  final Map&lt;String, double&gt; _velocidades = {
+    'Estándar': 0,
+    'Express': 5000,
+    'Súper Express': 10000,
+  };
+
+  String _ciudadSeleccionada = 'Bogotá';
+  String _tipoEnvio = 'Estándar';
+  bool _conSeguro = false;
+
+  double _total = 0;
+  bool _calculado = false;
+
+  @override
+  void dispose() {
+    _pesoController.dispose();
+    super.dispose();
+  }
+
+  void _calcularEnvio() {
+    final double peso =
+        double.tryParse(_pesoController.text.replaceAll(',', '.')) ?? 0;
+
+    setState(() {
+      _total = _ciudades[_ciudadSeleccionada]! +
+          (peso * 2000) +
+          _velocidades[_tipoEnvio]! +
+          (_conSeguro ? 3000 : 0);
+      _calculado = true;
+    });
+  }
+
+  String _pesos(double valor) {
+    final String entero = valor.round().toString();
+    final RegExp patron = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+    return '\$${entero.replaceAllMapped(patron, (Match m) =&gt; '${m[1]}.')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cotizador de Envíos'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _pesoController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Peso del paquete (Kg)',
+                hintText: 'Ej. 2.5',
+                prefixIcon: const Icon(Icons.scale),
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField&lt;String&gt;(
+              value: _ciudadSeleccionada,
+              decoration: InputDecoration(
+                labelText: 'Ciudad de destino',
+                prefixIcon: const Icon(Icons.location_city),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              items: _ciudades.keys.map((String ciudad) {
+                return DropdownMenuItem&lt;String&gt;(
+                  value: ciudad,
+                  child: Text('$ciudad  ·  ${_pesos(_ciudades[ciudad]!)}'),
+                );
+              }).toList(),
+              onChanged: (String? valor) {
+                if (valor == null) return;
+                setState(() =&gt; _ciudadSeleccionada = valor);
+              },
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 1,
+              child: Column(
+                children: _velocidades.keys.map((String tipo) {
+                  return RadioListTile&lt;String&gt;(
+                    dense: true,
+                    title: Text(tipo),
+                    subtitle: Text('Recargo: ${_pesos(_velocidades[tipo]!)}'),
+                    value: tipo,
+                    groupValue: _tipoEnvio,
+                    onChanged: (String? valor) {
+                      if (valor == null) return;
+                      setState(() =&gt; _tipoEnvio = valor);
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 1,
+              child: SwitchListTile(
+                title: const Text('Seguro de mercancía'),
+                subtitle: const Text('Cobertura adicional por \$3.000'),
+                secondary: const Icon(Icons.verified_user),
+                value: _conSeguro,
+                onChanged: (bool valor) =&gt; setState(() =&gt; _conSeguro = valor),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _calcularEnvio,
+              icon: const Icon(Icons.calculate),
+              label: const Text('COTIZAR ENVÍO'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 0,
+              color: Colors.indigo.shade50,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.indigo.shade100),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      _calculado
+                          ? 'VALOR TOTAL COTIZADO'
+                          : 'PRESIONA COTIZAR PARA VER EL VALOR',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _calculado ? _pesos(_total) : '--',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A237E),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ARCHIVO 5: lib/screens/encuesta_screen.dart  (Reto 2 de la Clase 2)
+// ============================================================================
+import 'package:flutter/material.dart';
+
+class EncuestaScreen extends StatefulWidget {
+  const EncuestaScreen({super.key});
+
+  @override
+  State&lt;EncuestaScreen&gt; createState() =&gt; _EncuestaScreenState();
+}
+
+class _EncuestaScreenState extends State&lt;EncuestaScreen&gt; {
+  double _calificacion = 8.0;
+
+  final Map&lt;String, bool&gt; _aspectos = {
+    'Velocidad': true,
+    'Amabilidad': true,
+    'Calidad del producto': false,
+  };
+
+  final List&lt;String&gt; _canales = ['Presencial', 'Virtual', 'Telefónico'];
+  String _canalSeleccionado = 'Presencial';
+
+  List&lt;String&gt; get _aspectosMarcados =&gt; _aspectos.entries
+      .where((MapEntry&lt;String, bool&gt; e) =&gt; e.value)
+      .map((MapEntry&lt;String, bool&gt; e) =&gt; e.key)
+      .toList();
+
+  void _enviarEncuesta() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '¡Gracias! Registramos ${_calificacion.round()}/10 vía $_canalSeleccionado',
+        ),
+        backgroundColor: Colors.green.shade700,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Encuesta de Feedback'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Nivel de satisfacción',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${_calificacion.round()} / 10',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _calificacion,
+                      min: 1.0,
+                      max: 10.0,
+                      divisions: 9,
+                      label: _calificacion.round().toString(),
+                      activeColor: Colors.green,
+                      onChanged: (double valor) {
+                        setState(() =&gt; _calificacion = valor);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 1,
+              child: Column(
+                children: _aspectos.keys.map((String aspecto) {
+                  return CheckboxListTile(
+                    dense: true,
+                    activeColor: Colors.green,
+                    title: Text(aspecto),
+                    value: _aspectos[aspecto],
+                    onChanged: (bool? valor) {
+                      setState(() =&gt; _aspectos[aspecto] = valor ?? false);
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Canal de atención utilizado',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8.0,
+              children: _canales.map((String canal) {
+                return ChoiceChip(
+                  label: Text(canal),
+                  selected: _canalSeleccionado == canal,
+                  selectedColor: Colors.green.shade100,
+                  onSelected: (bool seleccionado) {
+                    if (!seleccionado) return;
+                    setState(() =&gt; _canalSeleccionado = canal);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 0,
+              color: Colors.green.shade50,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.green.shade100),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RESUMEN DE LA VALORACIÓN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_calificacion.round()}/10',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text('Canal: $_canalSeleccionado'),
+                    Text(
+                      _aspectosMarcados.isEmpty
+                          ? 'Sin aspectos destacados'
+                          : 'Destaca: ${_aspectosMarcados.join(', ')}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _enviarEncuesta,
+              icon: const Icon(Icons.send),
+              label: const Text('ENVIAR RESPUESTA'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: TALLER DE EVALUACIÓN -->
+        <section id="tab-evaluacion" class="tab-content hidden space-y-8">
+            <div class="border-b border-slate-800 pb-4 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-pen-ruler text-flutter-light"></i> 6. Taller de Comprobación de Conceptos
+                    </h2>
+                    <p class="text-slate-400 text-sm">Responde las preguntas de comprobación de la Clase 3.</p>
+                </div>
+                <span id="quiz-score" class="text-sm font-bold bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
+                    Puntaje: <span class="text-flutter-light">0 / 3</span>
+                </span>
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass-panel p-6 rounded-xl border border-slate-700">
+                    <span class="text-xs font-bold text-flutter-light uppercase tracking-wider block mb-1">Pregunta 1</span>
+                    <h3 class="text-base font-bold text-white mb-3">¿Qué método de `Navigator` destruye la pantalla superior de la pila y regresa a la pantalla anterior?</h3>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q1" value="A" class="accent-flutter-light"><span class="text-slate-300">A) Navigator.push()</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q1" value="B" class="accent-flutter-light"><span class="text-slate-300">B) Navigator.pop()</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q1" value="C" class="accent-flutter-light"><span class="text-slate-300">C) Navigator.remove()</span></label>
+                    </div>
+                    <div id="c3q1-feedback" class="hidden mt-3 p-3 rounded-lg text-xs font-medium"></div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border border-slate-700">
+                    <span class="text-xs font-bold text-flutter-light uppercase tracking-wider block mb-1">Pregunta 2</span>
+                    <h3 class="text-base font-bold text-white mb-3">¿Por qué creamos una clase Modelo (como `Herramienta`) en la carpeta `lib/models/`?</h3>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q2" value="A" class="accent-flutter-light"><span class="text-slate-300">A) Para definir una estructura de datos POO con tipado fuerte que organice los atributos de cada objeto.</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q2" value="B" class="accent-flutter-light"><span class="text-slate-300">B) Para acelerar la velocidad del procesador en Android.</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q2" value="C" class="accent-flutter-light"><span class="text-slate-300">C) Es obligatorio para que el archivo `pubspec.yaml` funcione.</span></label>
+                    </div>
+                    <div id="c3q2-feedback" class="hidden mt-3 p-3 rounded-lg text-xs font-medium"></div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border border-slate-700">
+                    <span class="text-xs font-bold text-flutter-light uppercase tracking-wider block mb-1">Pregunta 3</span>
+                    <h3 class="text-base font-bold text-white mb-3">¿Por qué `ListView.builder` es más eficiente en memoria que `Column` para renderizar 1.000 elementos?</h3>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q3" value="A" class="accent-flutter-light"><span class="text-slate-300">A) Porque solo construye en RAM los elementos visibles en la pantalla (Renderizado Perezoso).</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q3" value="B" class="accent-flutter-light"><span class="text-slate-300">B) Porque comprime las imágenes a blanco y negro.</span></label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-900/80 rounded-lg cursor-pointer border border-slate-800"><input type="radio" name="c3q3" value="C" class="accent-flutter-light"><span class="text-slate-300">C) Porque no requiere el uso de `BuildContext`.</span></label>
+                    </div>
+                    <div id="c3q3-feedback" class="hidden mt-3 p-3 rounded-lg text-xs font-medium"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="evaluateQuizClase3()" class="px-6 py-3 bg-flutter-light text-slate-950 font-bold rounded-xl hover:bg-cyan-300 transition text-sm flex items-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-square-check"></i> Calificar Taller
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 7: RETO PRÁCTICO INTEGRADOR -->
+        <section id="tab-retos" class="tab-content hidden space-y-8">
+            <div class="border-b border-slate-800 pb-4 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold mb-2">
+                        <i class="fa-solid fa-trophy"></i> Ejercicio de Aplicación Autónomo
+                    </div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-400"></i> 7. Reto: App Directorio de Médicos / Especialistas
+                    </h2>
+                    <p class="text-slate-400 text-sm">Aplica la estructura multi-archivo, POO y `ListView.builder` creando una app de consulta clínica.</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-2xl border border-slate-700 space-y-4">
+                <h3 class="text-base font-bold text-white">📋 Requerimientos del Reto Autónomo:</h3>
+                <ul class="space-y-2 text-xs text-slate-300 list-disc list-inside leading-relaxed font-mono">
+                    <li>Crear el archivo <code>lib/models/medico.dart</code> con la clase `Medico` (id, nombre, especialidad, anosExperiencia, precioConsulta, disponibleHoy).</li>
+                    <li>Crear <code>lib/screens/directorio_screen.dart</code> con `ListView.builder` mostrando al menos 5 médicos en tarjetas `ListTile`.</li>
+                    <li>Crear <code>lib/screens/detalle_medico_screen.dart</code> e implementar la navegación con <code>Navigator.push()</code> pasando el objeto seleccionado.</li>
+                    <li>Incluir un botón "Reservar Cita" en el detalle que dispare un `SnackBar` confirmando la cita.</li>
+                </ul>
+            </div>
+
+            <!-- SIMULADOR EN VIVO DEL RETO -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-5 bg-slate-950 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+                    <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono border-b border-slate-800 pb-2">
+                        <span>📱 SIMULADOR EN VIVO - RETO INTEGRADOR</span>
+                        <span class="text-amber-400 font-bold" id="med-stack-label">Root [1]</span>
+                    </div>
+
+                    <div class="bg-slate-100 rounded-xl text-slate-900 font-sans text-xs overflow-hidden min-h-[380px] flex flex-col">
+                        <!-- Pantalla 1: Directorio -->
+                        <div id="med-screen-list" class="flex-1 flex flex-col">
+                            <div class="bg-teal-600 text-white p-2.5 font-bold text-center">
+                                Directorio de Especialistas
+                            </div>
+                            <div id="med-list-body" class="p-2.5 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+                                <!-- Generado por ListView.builder simulado -->
+                            </div>
+                        </div>
+
+                        <!-- Pantalla 2: Detalle (Navigator.push) -->
+                        <div id="med-screen-detail" class="flex-1 flex-col hidden bg-slate-50">
+                            <div class="bg-teal-600 text-white p-2.5 flex items-center gap-2">
+                                <button onclick="popMedico()" class="hover:bg-teal-700 p-1 rounded">
+                                    <i class="fa-solid fa-arrow-left"></i>
+                                </button>
+                                <span id="med-detail-title" class="font-bold truncate">Detalle</span>
+                            </div>
+                            <div id="med-detail-body" class="p-3 space-y-2.5 flex-1"></div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 font-mono text-center">Toca una tarjeta: se ejecuta <code>Navigator.push()</code> pasando el objeto <code>Medico</code>.</p>
+                </div>
+
+                <!-- SOLUCIÓN DE REFERENCIA -->
+                <div class="lg:col-span-7 space-y-4">
+                    <details class="bg-slate-950 rounded-xl border border-emerald-500/30">
+                        <summary class="cursor-pointer select-none p-4 text-xs font-bold text-emerald-400 flex items-center gap-2 hover:bg-slate-900/60 rounded-xl transition">
+                            <i class="fa-solid fa-code"></i> Ver Solución de Referencia (3 archivos `.dart`)
+                        </summary>
+                        <div class="px-4 pb-4 space-y-3">
+                            <div class="flex justify-between items-center flex-wrap gap-2">
+                                <span class="text-[10px] text-slate-500 font-mono">Intenta resolverlo antes de abrir esta solución.</span>
+                                <button onclick="copyCode('sol-medicos-code')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-[11px] font-bold hover:bg-emerald-500/30 transition flex items-center gap-2">
+                                    <i class="fa-regular fa-copy"></i> Copiar los 3 archivos
+                                </button>
+                            </div>
+                            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-[32rem] custom-scrollbar">
+<pre id="sol-medicos-code">// ============================================================================
+// ARCHIVO 1: lib/models/medico.dart
+// ============================================================================
+class Medico {
+  final String id;
+  final String nombre;
+  final String especialidad;
+  final int anosExperiencia;
+  final double precioConsulta;
+  final bool disponibleHoy;
+
+  Medico({
+    required this.id,
+    required this.nombre,
+    required this.especialidad,
+    required this.anosExperiencia,
+    required this.precioConsulta,
+    required this.disponibleHoy,
+  });
+}
+
+// Lista de datos de ejemplo (puede vivir en el mismo archivo del modelo)
+final List&lt;Medico&gt; medicosDemo = [
+  Medico(
+    id: '1',
+    nombre: 'Dra. Laura Restrepo',
+    especialidad: 'Medicina General',
+    anosExperiencia: 8,
+    precioConsulta: 65000,
+    disponibleHoy: true,
+  ),
+  Medico(
+    id: '2',
+    nombre: 'Dr. Andrés Villamil',
+    especialidad: 'Odontología',
+    anosExperiencia: 12,
+    precioConsulta: 90000,
+    disponibleHoy: false,
+  ),
+  Medico(
+    id: '3',
+    nombre: 'Dra. Camila Ospina',
+    especialidad: 'Pediatría',
+    anosExperiencia: 5,
+    precioConsulta: 80000,
+    disponibleHoy: true,
+  ),
+  Medico(
+    id: '4',
+    nombre: 'Dr. Julián Mesa',
+    especialidad: 'Dermatología',
+    anosExperiencia: 15,
+    precioConsulta: 120000,
+    disponibleHoy: true,
+  ),
+  Medico(
+    id: '5',
+    nombre: 'Dra. Paola Guerrero',
+    especialidad: 'Nutrición',
+    anosExperiencia: 6,
+    precioConsulta: 70000,
+    disponibleHoy: false,
+  ),
+];
+
+// ============================================================================
+// ARCHIVO 2: lib/screens/directorio_screen.dart
+// ============================================================================
+import 'package:flutter/material.dart';
+import '../models/medico.dart';
+import 'detalle_medico_screen.dart';
+
+class DirectorioScreen extends StatelessWidget {
+  const DirectorioScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final List&lt;Medico&gt; medicos = medicosDemo;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Directorio de Especialistas'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(12.0),
+        itemCount: medicos.length,
+        itemBuilder: (BuildContext context, int index) {
+          final Medico medico = medicos[index];
+
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor:
+                    medico.disponibleHoy ? Colors.teal : Colors.grey,
+                child: const Icon(Icons.person, color: Colors.white),
+              ),
+              title: Text(
+                medico.nombre,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                '${medico.especialidad} · ${medico.anosExperiencia} años',
+              ),
+              trailing: Icon(
+                medico.disponibleHoy
+                    ? Icons.check_circle
+                    : Icons.schedule,
+                color: medico.disponibleHoy ? Colors.green : Colors.orange,
+              ),
+              onTap: () {
+                // NAVEGACIÓN PASANDO EL OBJETO COMPLETO POR EL CONSTRUCTOR
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (BuildContext context) =&gt;
+                        DetalleMedicoScreen(medico: medico),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ARCHIVO 3: lib/screens/detalle_medico_screen.dart
+// ============================================================================
+import 'package:flutter/material.dart';
+import '../models/medico.dart';
+
+class DetalleMedicoScreen extends StatelessWidget {
+  // El objeto llega como parámetro obligatorio del constructor
+  final Medico medico;
+
+  const DetalleMedicoScreen({super.key, required this.medico});
+
+  String _pesos(double valor) {
+    final String entero = valor.round().toString();
+    final RegExp patron = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+    return '\$${entero.replaceAllMapped(patron, (Match m) =&gt; '${m[1]}.')}';
+  }
+
+  void _reservarCita(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cita reservada con ${medico.nombre}'),
+        backgroundColor: Colors.teal,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(medico.nombre),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 44,
+                backgroundColor: Colors.teal.shade100,
+                child: const Icon(Icons.person, size: 46, color: Colors.teal),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              medico.nombre,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              medico.especialidad,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 1,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.workspace_premium),
+                    title: const Text('Experiencia'),
+                    trailing: Text('${medico.anosExperiencia} años'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.payments),
+                    title: const Text('Valor de la consulta'),
+                    trailing: Text(_pesos(medico.precioConsulta)),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(
+                      medico.disponibleHoy
+                          ? Icons.event_available
+                          : Icons.event_busy,
+                      color:
+                          medico.disponibleHoy ? Colors.green : Colors.orange,
+                    ),
+                    title: const Text('Disponibilidad'),
+                    trailing: Text(
+                      medico.disponibleHoy ? 'Hoy' : 'Próxima semana',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: () =&gt; _reservarCita(context),
+              icon: const Icon(Icons.event_available),
+              label: const Text('RESERVAR CITA'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () =&gt; Navigator.pop(context),
+              child: const Text('Volver al directorio'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}</pre>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="glass-panel p-5 rounded-xl border border-amber-500/40 bg-slate-900/90 space-y-2 text-xs">
+                        <h4 class="text-sm font-bold text-amber-400 flex items-center gap-2 font-mono">
+                            <i class="fa-solid fa-circle-check"></i> Checklist de Entrega
+                        </h4>
+                        <ul class="space-y-1.5 text-slate-300 list-disc list-inside leading-relaxed">
+                            <li>Los 3 archivos están en sus carpetas correctas (<code>models/</code> y <code>screens/</code>).</li>
+                            <li><code>main.dart</code> apunta a <code>home: const DirectorioScreen()</code> (o se agrega como una <code>Herramienta</code> más de la ToolSuite).</li>
+                            <li>El detalle recibe el objeto por constructor, <strong>no</strong> variables globales.</li>
+                            <li>El <code>SnackBar</code> aparece al reservar y la flecha del <code>AppBar</code> ejecuta <code>Navigator.pop()</code>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-flutter-light text-base"></i>
+                <span class="font-semibold text-slate-400">Clase 3: Navegación, POO y Arquitectura Multi-Archivo</span>
+            </div>
+            <div>Recurso Educativo Móvil Interactivo</div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 glass-panel border border-flutter-light text-white px-4 py-3 rounded-xl text-xs flex items-center gap-3 shadow-2xl">
+        <i class="fa-solid fa-circle-check text-flutter-light text-lg"></i>
+        <span id="toast-message">Mensaje</span>
+    </div>
+
+    <script>
+        let stackDepth = 1;
+
+        const toolsData = {
+            cotizador: {
+                title: 'Cotizador de Envíos',
+                file: 'lib/screens/cotizador_screen.dart',
+                class: 'CotizadorScreen',
+                html: `
+                    <div class="space-y-3">
+                        <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[10px]">RETO 1 - CLASE 2</span>
+                        <p class="text-slate-600 text-xs">Peso: <strong>1.0 KG</strong> | Destino: <strong>Bogotá</strong></p>
+                        <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+                            <span class="text-[10px] text-indigo-600 block">COSTO FLETE CALCULADO</span>
+                            <span class="text-lg font-bold text-indigo-900">$10,000 COP</span>
+                        </div>
+                        <button onclick="showToast('Cotización realizada')" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-xs">Recalcular Flete</button>
+                    </div>
+                `
+            },
+            encuesta: {
+                title: 'Encuesta de Feedback',
+                file: 'lib/screens/encuesta_screen.dart',
+                class: 'EncuestaScreen',
+                html: `
+                    <div class="space-y-3">
+                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">RETO 2 - CLASE 2</span>
+                        <p class="text-slate-600 text-xs">Puntaje de Servicio: <strong>8 / 10 Pts</strong></p>
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
+                            <span class="text-[10px] text-emerald-600 block">VALORACIÓN</span>
+                            <span class="text-sm font-bold text-emerald-900">Buena Velocidad</span>
+                        </div>
+                        <button onclick="showToast('Feedback Enviado')" class="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold text-xs">Enviar Respuesta</button>
+                    </div>
+                `
+            }
+        };
+
+        function pushSimTool(toolKey) {
+            const data = toolsData[toolKey];
+            if (!data) return;
+
+            document.getElementById('tool-appbar-title').innerText = data.title;
+            document.getElementById('tool-body-content').innerHTML = data.html;
+            document.getElementById('sim-tool-file-tag').innerText = data.file;
+
+            document.getElementById('sim-screen-menu').classList.add('hidden');
+            document.getElementById('sim-screen-tool').classList.remove('hidden');
+            document.getElementById('sim-screen-tool').classList.add('flex');
+
+            stackDepth = 2;
+            updateStackUI(data.class, data.file);
+        }
+
+        function popSimScreen() {
+            document.getElementById('sim-screen-tool').classList.add('hidden');
+            document.getElementById('sim-screen-tool').classList.remove('flex');
+            document.getElementById('sim-screen-menu').classList.remove('hidden');
+
+            stackDepth = 1;
+            updateStackUI();
+        }
+
+        function popToRootScreen() {
+            popSimScreen();
+        }
+
+        function updateStackUI(className = '', fileName = '') {
+            const label = document.getElementById('stack-depth-label');
+            const topVisual = document.getElementById('stack-visual-top');
+            const classText = document.getElementById('stack-tool-class');
+            const fileText = document.getElementById('stack-tool-file');
+
+            if (label) label.innerText = stackDepth === 1 ? 'Root [1]' : 'Detail [2]';
+            if (topVisual) {
+                if (stackDepth === 2) {
+                    topVisual.classList.remove('hidden');
+                    if (classText) classText.innerText = className;
+                    if (fileText) fileText.innerText = fileName;
+                } else {
+                    topVisual.classList.add('hidden');
+                }
+            }
+        }
+
+        function openSimDrawer() {
+            document.getElementById('sim-drawer-overlay')?.classList.remove('hidden');
+        }
+
+        function closeSimDrawer() {
+            document.getElementById('sim-drawer-overlay')?.classList.add('hidden');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-slate-800', 'text-white', 'border', 'border-slate-700');
+                btn.classList.add('text-slate-300');
+            });
+
+            document.getElementById(`tab-btn-${tabId}`)?.classList.add('active', 'bg-slate-800', 'text-white', 'border', 'border-slate-700');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu')?.classList.toggle('hidden');
+        }
+
+        let xrayEnabled = false;
+        function toggleXRayMode() {
+            xrayEnabled = !xrayEnabled;
+            const simScreen = document.getElementById('simulated-app-screen');
+            const xrayBtnText = document.getElementById('xray-text');
+
+            if (simScreen) {
+                if (xrayEnabled) {
+                    simScreen.classList.add('xray-active');
+                    if (xrayBtnText) xrayBtnText.innerText = 'Desactivar Radiografía (Archivos y Rutas)';
+                    showToast('Modo Radiografía Activado: Muestra rutas y archivos .dart');
+                } else {
+                    simScreen.classList.remove('xray-active');
+                    if (xrayBtnText) xrayBtnText.innerText = 'Activar Radiografía (Archivos y Rutas)';
+                    showToast('Modo Vista Normal Restablecido');
+                }
+            }
+        }
+
+        const fileDetailsData = {
+            main: {
+                title: 'lib/main.dart',
+                tag: 'Punto de Entrada',
+                desc: 'Contiene únicamente la función main() y la configuración del widget MaterialApp. No debe acumular el diseño de las pantallas secundarias.',
+                code: `import 'package:flutter/material.dart';\nimport 'screens/menu_screen.dart';\n\nvoid main() {\n  runApp(const MiSuiteApp());\n}`
+            },
+            herramienta_model: {
+                title: 'lib/models/herramienta.dart',
+                tag: 'Modelo de Datos (POO)',
+                desc: 'Define la clase POO que abstrae cada ítem del menú Hub (id, título, descripción, icono, color y la pantalla destino de tipo Widget).',
+                code: `import 'package:flutter/material.dart';\n\nclass Herramienta {\n  final String id;\n  final String titulo;\n  final String descripcion;\n  final IconData icono;\n  final Color color;\n  final Widget pantallaDestino;\n\n  Herramienta({\n    required this.id,\n    required this.titulo,\n    required this.descripcion,\n    required this.icono,\n    required this.color,\n    required this.pantallaDestino,\n  });\n}`
+            },
+            menu_screen: {
+                title: 'lib/screens/menu_screen.dart',
+                tag: 'Pantalla Principal (Hub)',
+                desc: 'Contiene el ListView.builder que itera sobre la lista de objetos Herramienta y ejecuta Navigator.push().',
+                code: `import 'package:flutter/material.dart';\nimport '../models/herramienta.dart';\nimport 'cotizador_screen.dart';\nimport 'encuesta_screen.dart';\n\nclass MenuScreen extends StatelessWidget { ... }`
+            },
+            cotizador_screen: {
+                title: 'lib/screens/cotizador_screen.dart',
+                tag: 'Pantalla Secundaria (Reto 1)',
+                desc: 'Contiene todo el código UI y estado del Cotizador de Envíos de la semana pasada aislado en su propio archivo.',
+                code: `import 'package:flutter/material.dart';\n\nclass CotizadorScreen extends StatefulWidget { ... }`
+            },
+            encuesta_screen: {
+                title: 'lib/screens/encuesta_screen.dart',
+                tag: 'Pantalla Secundaria (Reto 2)',
+                desc: 'Pantalla independiente con la encuesta de satisfacción y sus estados aislados.',
+                code: `import 'package:flutter/material.dart';\n\nclass EncuestaScreen extends StatefulWidget { ... }`
+            }
+        };
+
+        function showFileDetails(fileKey) {
+            const data = fileDetailsData[fileKey];
+            if (!data) return;
+
+            document.getElementById('file-detail-title').innerText = data.title;
+            document.getElementById('file-detail-tag').innerText = data.tag;
+            document.getElementById('file-detail-desc').innerText = data.desc;
+            document.getElementById('file-detail-code').innerText = data.code;
+        }
+
+        // Timer
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        function startTimer() {
+            const btn = document.getElementById('timer-btn');
+            const display = document.getElementById('timer-display');
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-play mr-1"></i> Reanudar Cronómetro';
+                return;
+            }
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-pause mr-1"></i> Pausar Cronómetro';
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const hrs = String(Math.floor(secondsElapsed / 3600)).padStart(2, '0');
+                const mins = String(Math.floor((secondsElapsed % 3600) / 60)).padStart(2, '0');
+                const secs = String(secondsElapsed % 60).padStart(2, '0');
+                if (display) display.innerText = `${hrs}:${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function copyCode(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const textarea = document.createElement('textarea');
+            textarea.value = el.innerText || el.textContent;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('¡Código copiado al portapapeles!');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            if (!toast || !msgEl) return;
+            msgEl.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function evaluateQuizClase3() {
+            const answers = { c3q1: 'B', c3q2: 'A', c3q3: 'A' };
+            let score = 0;
+            for (let i = 1; i <= 3; i++) {
+                const qName = `c3q${i}`;
+                const selected = document.querySelector(`input[name="${qName}"]:checked`);
+                const feedback = document.getElementById(`${qName}-feedback`);
+                const correct = answers[qName];
+                if (!feedback) continue;
+                feedback.classList.remove('hidden', 'bg-emerald-950/80', 'text-emerald-300', 'bg-rose-950/80', 'text-rose-300');
+                if (selected && selected.value === correct) {
+                    score++;
+                    feedback.classList.add('bg-emerald-950/80', 'text-emerald-300');
+                    feedback.innerHTML = `¡Correcto!`;
+                } else {
+                    feedback.classList.add('bg-rose-950/80', 'text-rose-300');
+                    feedback.innerHTML = `Incorrecto. Opción correcta: (${correct}).`;
+                }
+            }
+            document.getElementById('quiz-score').innerHTML = `Puntaje: <span class="text-flutter-light">${score} / 3</span>`;
+        }
+
+        // ====== SIMULADOR DEL RETO INTEGRADOR: DIRECTORIO DE MÉDICOS ======
+        const medicosDemo = [
+            { nombre: 'Dra. Laura Restrepo', especialidad: 'Medicina General', anos: 8, precio: 65000, hoy: true },
+            { nombre: 'Dr. Andrés Villamil', especialidad: 'Odontología', anos: 12, precio: 90000, hoy: false },
+            { nombre: 'Dra. Camila Ospina', especialidad: 'Pediatría', anos: 5, precio: 80000, hoy: true },
+            { nombre: 'Dr. Julián Mesa', especialidad: 'Dermatología', anos: 15, precio: 120000, hoy: true },
+            { nombre: 'Dra. Paola Guerrero', especialidad: 'Nutrición', anos: 6, precio: 70000, hoy: false }
+        ];
+
+        function pesosCop(valor) {
+            return `$${valor.toLocaleString('es-CO')}`;
+        }
+
+        // Equivalente visual del ListView.builder
+        function renderDirectorioMedicos() {
+            const cont = document.getElementById('med-list-body');
+            if (!cont) return;
+
+            cont.innerHTML = medicosDemo.map((m, i) => `
+                <div onclick="pushMedico(${i})" class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-teal-500 transition flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full ${m.hoy ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-500'} flex items-center justify-center">
+                            <i class="fa-solid fa-user-doctor text-xs"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-[11px] text-slate-800">${m.nombre}</h4>
+                            <p class="text-[10px] text-slate-500">${m.especialidad} · ${m.anos} años</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid ${m.hoy ? 'fa-circle-check text-emerald-500' : 'fa-clock text-amber-500'} text-xs"></i>
+                </div>
+            `).join('');
+        }
+
+        function pushMedico(index) {
+            const m = medicosDemo[index];
+            if (!m) return;
+
+            document.getElementById('med-detail-title').innerText = m.nombre;
+            document.getElementById('med-detail-body').innerHTML = `
+                <div class="text-center space-y-1">
+                    <div class="w-14 h-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mx-auto text-xl">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-800">${m.nombre}</h4>
+                    <p class="text-[10px] text-slate-500">${m.especialidad}</p>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-[11px]">
+                    <div class="flex justify-between p-2"><span class="text-slate-500">Experiencia</span><strong>${m.anos} años</strong></div>
+                    <div class="flex justify-between p-2"><span class="text-slate-500">Consulta</span><strong>${pesosCop(m.precio)}</strong></div>
+                    <div class="flex justify-between p-2"><span class="text-slate-500">Disponibilidad</span><strong class="${m.hoy ? 'text-emerald-600' : 'text-amber-600'}">${m.hoy ? 'Hoy' : 'Próxima semana'}</strong></div>
+                </div>
+                <button onclick="reservarCitaMedico('${m.nombre}')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-xs shadow transition">
+                    RESERVAR CITA
+                </button>
+            `;
+
+            document.getElementById('med-screen-list').classList.add('hidden');
+            const detalle = document.getElementById('med-screen-detail');
+            detalle.classList.remove('hidden');
+            detalle.classList.add('flex');
+
+            const label = document.getElementById('med-stack-label');
+            if (label) label.innerText = 'DetalleMedicoScreen [2]';
+        }
+
+        function popMedico() {
+            const detalle = document.getElementById('med-screen-detail');
+            detalle.classList.add('hidden');
+            detalle.classList.remove('flex');
+            document.getElementById('med-screen-list').classList.remove('hidden');
+
+            const label = document.getElementById('med-stack-label');
+            if (label) label.innerText = 'Root [1]';
+        }
+
+        // Equivalente del ScaffoldMessenger.showSnackBar()
+        function reservarCitaMedico(nombre) {
+            showToast(`Cita reservada con ${nombre}`);
+        }
+
+        window.onload = function() {
+            showFileDetails('main');
+            renderDirectorioMedicos();
+        };
+    </script>
+</body>
+</html>
