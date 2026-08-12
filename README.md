@@ -1,8 +1,7 @@
 # ToolSuite — Ejercicios de Desarrollo Móvil con Flutter
 
 Proyecto del curso de desarrollo móvil: una aplicación integradora que reúne varios
-ejercicios de UI en un solo menú navegable, más dos apps independientes y las guías
-interactivas de clase.
+ejercicios de UI en un solo menú navegable, más las guías interactivas de clase.
 
 El objetivo pedagógico es pasar de *"todo el código en `main.dart`"* a una
 **arquitectura multi-archivo** con modelos POO, pantallas separadas y navegación
@@ -17,8 +16,6 @@ con `Navigator`.
 | Carpeta / archivo | Descripción |
 |---|---|
 | **`flutter_application_1/`** | **ToolSuite** — app integradora: menú hub con `ListView.builder`, `Drawer` y `Navigator.push()` hacia cada ejercicio |
-| **`calculadora_app/`** | Proyecto independiente — Calculadora con las 4 operaciones (+, −, ×, ÷) |
-| **`encuesta_app/`** | Proyecto independiente — Encuesta de satisfacción |
 | `clase_2_*.html` | Guía interactiva: anatomía de widgets, Flex Engine, laboratorios visuales y 4 retos con simulador |
 | `clase_3_*.html` | Guía interactiva: navegación, POO, arquitectura `lib/` y reto integrador |
 
@@ -85,29 +82,13 @@ flutter_application_1/lib/
 
 ---
 
-## Apps independientes
-
-Los dos ejercicios centrales de la Clase 2 también viven como proyectos Flutter
-completos, para poder ejecutarlos por separado:
-
-- **`calculadora_app/`** — suma, resta, multiplicación y división. Valida campos
-  vacíos, atrapa la división entre cero y recorta los decimales infinitos
-  (`10 ÷ 3` → `3.3333`, no `3.3333333333333335`).
-- **`encuesta_app/`** — la encuesta con su `Slider`, casillas y chips.
-
-<p align="center">
-  <img src="docs/capturas/calculadora.png" width="45%" alt="Calculadora con las 4 operaciones">
-</p>
-
----
-
 ## Cómo ejecutar
 
 Requiere **Flutter 3.44** o superior.
 
 ```bash
 git clone https://github.com/nicolneira07-tech/flutter-toolsuite.git
-cd flutter-toolsuite/flutter_application_1   # o calculadora_app / encuesta_app
+cd flutter-toolsuite/flutter_application_1
 
 flutter pub get
 flutter run
@@ -115,7 +96,7 @@ flutter run
 
 ## Pruebas
 
-Los tres proyectos tienen pruebas de widget y pasan `flutter analyze` sin avisos:
+El proyecto tiene pruebas de widget y pasa `flutter analyze` sin avisos:
 
 ```bash
 flutter analyze
@@ -125,8 +106,6 @@ flutter test
 | Proyecto | Pruebas | Qué verifican |
 |---|---|---|
 | `flutter_application_1` | 3 | El hub lista sus herramientas, cada una abre y regresa con `pop`, el drawer se abre |
-| `calculadora_app` | 7 | Las 4 operaciones, división entre cero, campos vacíos y limpiar |
-| `encuesta_app` | 3 | Estado inicial, cambio de canal y `SnackBar` al enviar |
 
 ---
 
